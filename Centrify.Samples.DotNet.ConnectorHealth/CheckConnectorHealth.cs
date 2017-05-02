@@ -31,7 +31,7 @@ namespace Centrify.Samples.DotNet.ConnectorHealth
 {
     class CheckConnectorHealth
     {
-        static string Version = "Version 1.0_05_01_17";
+        static string Version = "Version 1.1_05_02_17";
 
         static void Main(string[] args)
         {
