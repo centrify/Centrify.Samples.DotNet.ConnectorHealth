@@ -106,7 +106,7 @@ namespace Centrify.Samples.DotNet.ApiLib
                 throw new ApplicationException(result["Message"]);
             }
 
-            return result["Result"];
+            return result["Result"]["Connectors"];
         }
     }
 }

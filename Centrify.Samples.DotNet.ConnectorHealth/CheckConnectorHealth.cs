@@ -25,6 +25,7 @@ using System.IO;
 using System.Configuration;
 using Newtonsoft.Json;
 using System.Linq;
+using System.Web.Script;
 
 namespace Centrify.Samples.DotNet.ConnectorHealth
 {
@@ -82,9 +83,9 @@ namespace Centrify.Samples.DotNet.ConnectorHealth
                 Dictionary<string, dynamic> dicConnector = connector["Row"].ToObject<Dictionary<string, dynamic>>();
                 Console.WriteLine("Checking health of cloud connector. Name: {0}, ID: {1}", dicConnector["MachineName"], dicConnector["ID"]);
 
-                Newtonsoft.Json.Linq.JObject results = apiClient.CheckProxyHealth(dicConnector["ID"]);
+                Newtonsoft.Json.Linq.JArray results = apiClient.CheckProxyHealth(dicConnector["ID"]);
 
-                Dictionary<string, dynamic> dicConnResults = results["Connectors"][0]["ConnectorInfo"].ToObject<Dictionary<string, dynamic>>();
+                Dictionary<string, dynamic> dicConnResults = results[0].ToObject<Dictionary<string, dynamic>>();
 
                 ProcessQueryResults(dicConnector["MachineName"].ToString(), dicConnResults);
             }
@@ -106,10 +107,44 @@ namespace Centrify.Samples.DotNet.ConnectorHealth
         {
             try
             {
-                using (var writer = new StreamWriter(@"Output\" + fileName + ".csv"))
+                using (var writer = new StreamWriter(@"Output\" + fileName + ".csv", true))
                 {
-                    string connectorHealth = string.Join(";", results.Select(x => x.Key + "=" + x.Value).ToArray());
+                    Console.WriteLine("Processing connector health results...");
 
+                    //Conenctor info will be present in every result for checkproxyhealth
+                    Dictionary < string, dynamic > dicConnInfo = results["ConnectorInfo"].ToObject<Dictionary<string, dynamic>>();
+                    //adInfo will not be in the result if the connector is not connected to an AD or LADP environment. We must check if adInfo is present
+                    Dictionary<string, dynamic> dicAdInfo = null;
+                    Dictionary<string, dynamic> dicFullResult = null;
+
+                    //Check if connector has an AD or LDAP environment and populate dicAdInfo if it is
+                    Console.WriteLine("Checking Active Directory environment...");
+
+                    if (results.ContainsKey("AdInfo"))
+                    {
+                        dicAdInfo = results["AdInfo"].ToObject<Dictionary<string, dynamic>>();
+                        Console.WriteLine("Active Directory found...");
+                    }
+                    else
+                    {
+                        Console.WriteLine("No Active Directory environments were found...");
+                    }
+
+                    //Combine dictionaries if adInfo is found. Otherwise just use the Connector Info dictionary
+                    if (dicAdInfo != null)
+                    {
+                        //CheckProxyHealth returns status for both the connector and AD. Combining dictionaries with Union to preserve if one status is different and joining them if the same. 
+                        dicFullResult = dicConnInfo.Union(dicAdInfo).ToDictionary(k => k.Key, v => v.Value);
+                    }
+                    else
+                    {
+                        dicFullResult = dicConnInfo;
+                    }       
+
+                    //Create string for CSV. This sample uses a log format not column row format. i.e. results will be in columnName=value;column2Name=vale;etc. If different formatting is desired, the logic will need to be changed. 
+                    string connectorHealth = string.Join(ConfigurationManager.AppSettings["CSVDelimiter"], dicFullResult.Select(x => x.Key + "=" + x.Value).ToArray());
+
+                    //Write to CSV
                     writer.WriteLine(connectorHealth);
                     writer.Flush();
                     
@@ -118,7 +153,7 @@ namespace Centrify.Samples.DotNet.ConnectorHealth
             }
             catch (Exception ex)
             {
-                Console.WriteLine("There was an error processing connector health to CSV: " + ex.InnerException);
+                Console.WriteLine("There was an error processing connector health to CSV: " + ex.Message);
             }
         }
     }
