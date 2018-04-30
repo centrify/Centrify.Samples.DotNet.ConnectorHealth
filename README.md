@@ -16,3 +16,5 @@ Installation and use Instructions:
 5. Results will be located in the Output folder in the root of the utility directory.
 6. Use a scheduling tool, such as Windows Task Scheduler, to run the utility on a scheduled basis. The utility can be ran as often as desired as long as it has a chance to finish running before it is ran again.
 7. Make use of exported CSV files in desired use case, or add functionality to the sample project to meet the needs of desired use case.
+
+For support, please contact devsupport@centrify.com
